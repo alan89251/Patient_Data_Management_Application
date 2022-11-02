@@ -35,7 +35,8 @@ server.get('/patients', function(req, res, next) {
 // Get a single patient by their patient id
 server.get('/patients/:id', function(req, res, next) {
     console.log(`Received GET request: /patients/${req.params.id}`)
-    Patient.find({ _id: req.params.id })
+    const id = req.params.id.split("=")[1] // get the id from the param string
+    Patient.find({ _id: id })
     .exec((error, patient) => {
         console.log(`Respond GET request: /patients/${req.params.id}`)
         if (patient) {
