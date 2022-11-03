@@ -55,6 +55,7 @@ server.post('/patients', function (req, res, next) {
     console.log('body=>' + JSON.stringify(req.body))
     let errorMsg = validateAddPatientParams(req.body)
     if (errorMsg !== '') {
+        console.log('Respond POST request: /patients')
         return next(new errors.BadRequestError(errorMsg))
     }
 
