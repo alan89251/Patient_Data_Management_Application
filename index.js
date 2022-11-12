@@ -8,6 +8,9 @@ var errors = require('restify-errors');
 let mongoose = require('mongoose')
 createDBConnection()
 let Patient = createModel('Patient', require('./patientSchema.js'))
+let ClinicalData = createModel('ClinicalData', require('./ClinicalDataSchema'))
+let BloodPressureData = createModel('ClinicalData', require('./BloodPressureDataSchema'))
+let TreatmentRecord = createModel('TreatmentRecord', require('./TreatmentRecordSchema'))
 
 let server = restify.createServer({name: SERVER_NAME})
 server.listen(PORT, HOST, function () {
@@ -86,6 +89,120 @@ server.post('/patients', function (req, res, next) {
     })
 })
 
+// Get the latest records of clinical data (Diastolic and systolic blood Pressure,
+// Respiratory rate, Blood oxygen Level, Heart beat rate) of a patient
+server.get('/patients/:id/tests', function(req, res, next) {
+    const id = req.params.id.split("=")[1] // get the id from the param string
+    console.log(`Received GET request: /patients/${id}/tests`)
+    ClinicalData.find({patient_id: id})
+    .exec((error, clinicalDatas) => {
+        console.log(`Respond GET request: /patients/${id}/tests`)
+        if (clinicalDatas) {
+            res.send(clinicalDatas)
+        }
+        else {
+            res.send(404)
+        }
+    })
+})
+
+//Add records of clinical data (Diastolic and systolic blood Pressure, Respiratory rate,
+//Blood oxygen Level, Heart beat rate) of a patient
+server.post('/patients/:id/tests', async function(req, res, next) {
+    const id = req.params.id.split("=")[1] // get the id from the param string
+    console.log(`Received POST request: /patients/${id}/tests`)
+    console.log('params=>' + JSON.stringify(req.params))
+    console.log('body=>' + JSON.stringify(req.body))
+    let errorMsg = ''
+    for (let testParams of req.body) {
+        errorMsg = validateAddTestsParams(testParams)
+    }
+    if (errorMsg !== '') {
+        console.log(`Respond POST request: /patients/${id}/tests`)
+        return next(new errors.BadRequestError(errorMsg))
+    }
+
+    let savedClinicalDatas = []
+    // save to db
+    for (let testParams of req.body) {
+        // Creating new clinicalData
+        let newClinicalDataParams = {
+            patient_id: testParams.patient_id,
+            date: testParams.date,
+            time: testParams.time,
+            nurse_name: testParams.nurse_name,
+            type: testParams.type,
+            category: testParams.category,
+            readings: testParams.readings
+        }
+        let newClinicalData;
+        if (testParams.category == 'Blood pressure') {
+            newClinicalData = BloodPressureData(newClinicalDataParams)
+        }
+        else {
+            newClinicalData = ClinicalData(newClinicalDataParams)
+        }
+
+        // save the new test to db
+        await newClinicalData.save()
+        .then( (result) => {
+            savedClinicalDatas.push(result)
+        })
+        .catch( (error) => {
+            console.log(`Respond POST request: /patients/${id}/tests`)
+            return next(new Error(JSON.stringify(error.errors)))
+        })
+    }
+
+    console.log(`Respond POST request: /patients/${id}/tests`)
+    res.send(201, savedClinicalDatas)
+})
+
+// Get all the treatment records of a patient
+server.get('/patients/:id/treatments', function(req, res, next) {
+    const id = req.params.id.split("=")[1] // get the id from the param string
+    console.log(`Received GET request: /patients/${id}/treatments`)
+    TreatmentRecord.find({patient_id: id})
+    .exec((error, treatmentRecords) => {
+        console.log(`Respond GET request: /patients/${id}/treatments`)
+        if (treatmentRecords) {
+            res.send(treatmentRecords)
+        }
+        else {
+            res.send(404)
+        }
+    })
+})
+
+// Add one treatment record of a patient to the system
+server.post('/patients/:id/treatments', function(req, res, next) {
+    const id = req.params.id.split("=")[1] // get the id from the param string
+    console.log(`Received POST request: /patients/${id}/treatments`)
+    console.log('params=>' + JSON.stringify(req.params))
+    console.log('body=>' + JSON.stringify(req.body))
+    let errorMsg = validateAddTreatmentRecordParams(req.body)
+    if (errorMsg !== '') {
+        console.log(`Respond POST request: /patients/${id}/treatments`)
+        return next(new errors.BadRequestError(errorMsg))
+    }
+
+    // Creating new TreatmentRecord
+    let newTreatmentRecord = TreatmentRecord({
+        patient_id: req.body.patient_id,
+        treatment: req.body.treatment,
+        date: req.body.date,
+        description: req.body.description
+    })
+
+    // save the new treatment record to db
+    newTreatmentRecord.save((error, result) => {
+        console.log(`Respond POST request: /patients/${id}/treatments`)
+        if (error)
+            return next(new Error(JSON.stringify(error.errors)))
+        res.send(201, result)
+    })
+})
+
 // validate the parameters of the api '/patients' POST
 // return error message if any error, otherwise return empty string
 function validateAddPatientParams(params) {
@@ -130,6 +247,67 @@ function validateAddPatientParams(params) {
     }
     if (isEmptyString(params.photo)) {
         return 'photo is empty'
+    }
+
+    return ''
+}
+
+// validate the parameters of the api '/patients/:id/tests' POST
+// return error message if any error, otherwise return empty string
+function validateAddTestsParams(params) {
+    if (isEmptyString(params.patient_id)) {
+        return 'patient_id is empty'
+    }
+    if (isEmptyString(params.date)) {
+        return 'date is empty'
+    }
+    if (isEmptyString(params.time)) {
+        return 'time is empty'
+    }
+    if (isEmptyString(params.nurse_name)) {
+        return 'nurse_name is empty'
+    }
+    if (isEmptyString(params.type)) {
+        return 'type is empty'
+    }
+    if (isEmptyString(params.category)) {
+        return 'category is empty'
+    }
+    switch (params.category) {
+        case 'Blood pressure':
+            if (isNaN(params.readings.diastolic)) {
+                return 'diastolic is not a number'
+            }
+            if (isNaN(params.readings.systolic)) {
+                return 'systolic is not a number'
+            }
+            break
+        case 'Respiratory rate':
+        case 'Blood oxygen level':
+        case 'Heart beat rate':
+            if (isNaN(params.readings)) {
+                return 'readings is not a number'
+            }
+            break
+        default:
+            return 'category is not valid'
+    }
+
+    return ''
+}
+
+function validateAddTreatmentRecordParams(params) {
+    if (isEmptyString(params.patient_id)) {
+        return 'patient_id is empty'
+    }
+    if (isEmptyString(params.treatment)) {
+        return 'treatment is empty'
+    }
+    if (isEmptyString(params.date)) {
+        return 'date is empty'
+    }
+    if (isEmptyString(params.description)) {
+        return 'description is empty'
     }
 
     return ''
