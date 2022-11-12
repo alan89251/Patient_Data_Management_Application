@@ -11,6 +11,7 @@ let Patient = createModel('Patient', require('./patientSchema.js'))
 let ClinicalData = createModel('ClinicalData', require('./ClinicalDataSchema'))
 let BloodPressureData = createModel('ClinicalData', require('./BloodPressureDataSchema'))
 let TreatmentRecord = createModel('TreatmentRecord', require('./TreatmentRecordSchema'))
+let User = createModel('User', require('./UserSchema'))
 
 let server = restify.createServer({name: SERVER_NAME})
 server.listen(PORT, HOST, function () {
@@ -200,6 +201,29 @@ server.post('/patients/:id/treatments', function(req, res, next) {
         if (error)
             return next(new Error(JSON.stringify(error.errors)))
         res.send(201, result)
+    })
+})
+
+// login
+server.get('/login', function(req, res, next) {
+    console.log('Received GET request: /login')
+    User.find({user_name: req.body.user_name})
+    .exec((error, result) => {
+        console.log('Respond GET request: /login')
+        if (error) {
+            return next(new Error(JSON.stringify(error.errors)))
+        }
+        if (result === null || result === undefined) {
+            res.send(400)
+        }
+        else if (result.password !== req.body.password) {
+            res.send(400)
+        }
+        else {
+            res.send({
+                user_type: result.user_type
+            })
+        }
     })
 })
 
