@@ -9,7 +9,6 @@ let mongoose = require('mongoose')
 createDBConnection()
 let Patient = createModel('Patient', require('./patientSchema.js'))
 let ClinicalData = createModel('ClinicalData', require('./ClinicalDataSchema'))
-let BloodPressureData = createModel('ClinicalData', require('./BloodPressureDataSchema'))
 let TreatmentRecord = createModel('TreatmentRecord', require('./TreatmentRecordSchema'))
 let User = createModel('User', require('./UserSchema'))
 
@@ -21,8 +20,8 @@ server.listen(PORT, HOST, function () {
     console.log(baseUrl + '/patients method: GET, POST')
     console.log(baseUrl + '/patients/:id method: GET')
 })
-server.use(restify.fullResponse())
-    .use(restify.bodyParser())
+server.use(restify.plugins.fullResponse())
+    .use(restify.plugins.bodyParser())
 
 // Get all patients
 server.get('/patients', function(req, res, next) {
@@ -39,8 +38,7 @@ server.get('/patients', function(req, res, next) {
 // Get a single patient by their patient id
 server.get('/patients/:id', function(req, res, next) {
     console.log(`Received GET request: /patients/${req.params.id}`)
-    const id = req.params.id.split("=")[1] // get the id from the param string
-    Patient.find({ _id: id })
+    Patient.find({ _id: req.params.id })
     .exec((error, patient) => {
         console.log(`Respond GET request: /patients/${req.params.id}`)
         if (patient) {
@@ -93,46 +91,45 @@ server.post('/patients', function (req, res, next) {
 // Get the latest records of clinical data (Diastolic and systolic blood Pressure,
 // Respiratory rate, Blood oxygen Level, Heart beat rate) of a patient
 server.get('/patients/:id/tests', async function(req, res, next) {
-    const id = req.params.id.split("=")[1] // get the id from the param string
-    console.log(`Received GET request: /patients/${id}/tests`)
+    console.log(`Received GET request: /patients/${req.params.id}/tests`)
 
     try {
         let clinicalDatas = []
         let clinicalData;
         // Find Blood pressure
-        clinicalData = await ClinicalData.find({patient_id: id, category: 'Blood pressure'})
+        clinicalData = await ClinicalData.find({patient_id: req.params.id, category: 'Blood pressure'})
             .sort([['date', 'desc'], ['time'], 'desc'])
             .limit(1)
             .exec()
         if (clinicalData)
             clinicalDatas.push(clinicalData)
         // Find Respiratory rate
-        clinicalData = await ClinicalData.find({patient_id: id, category: 'Respiratory rate'})
+        clinicalData = await ClinicalData.find({patient_id: req.params.id, category: 'Respiratory rate'})
             .sort([['date', 'desc'], ['time'], 'desc'])
             .limit(1)
             .exec()
         if (clinicalData)
             clinicalDatas.push(clinicalData)
         // Find Blood oxygen level
-        clinicalData = await ClinicalData.find({patient_id: id, category: 'Blood oxygen level'})
+        clinicalData = await ClinicalData.find({patient_id: req.params.id, category: 'Blood oxygen level'})
             .sort([['date', 'desc'], ['time'], 'desc'])
             .limit(1)
             .exec()
         if (clinicalData)
             clinicalDatas.push(clinicalData)
         // Find Heart beat rate
-        clinicalData = await ClinicalData.find({patient_id: id, category: 'Heart beat rate'})
+        clinicalData = await ClinicalData.find({patient_id: req.params.id, category: 'Heart beat rate'})
             .sort([['date', 'desc'], ['time'], 'desc'])
             .limit(1)
             .exec()
         if (clinicalData)
             clinicalDatas.push(clinicalData)
 
-        console.log(`Respond GET request: /patients/${id}/tests`)
+        console.log(`Respond GET request: /patients/${req.params.id}/tests`)
         res.send(clinicalDatas)
     }
     catch (error) {
-        console.log(`Respond GET request: /patients/${id}/tests`)
+        console.log(`Respond GET request: /patients/${req.params.id}/tests`)
         return next(new Error(JSON.stringify(error.errors)))
     }
 })
@@ -140,8 +137,7 @@ server.get('/patients/:id/tests', async function(req, res, next) {
 //Add records of clinical data (Diastolic and systolic blood Pressure, Respiratory rate,
 //Blood oxygen Level, Heart beat rate) of a patient
 server.post('/patients/:id/tests', async function(req, res, next) {
-    const id = req.params.id.split("=")[1] // get the id from the param string
-    console.log(`Received POST request: /patients/${id}/tests`)
+    console.log(`Received POST request: /patients/${req.params.id}/tests`)
     console.log('params=>' + JSON.stringify(req.params))
     console.log('body=>' + JSON.stringify(req.body))
     let errorMsg = ''
@@ -149,7 +145,7 @@ server.post('/patients/:id/tests', async function(req, res, next) {
         errorMsg = validateAddTestsParams(testParams)
     }
     if (errorMsg !== '') {
-        console.log(`Respond POST request: /patients/${id}/tests`)
+        console.log(`Respond POST request: /patients/${req.params.id}/tests`)
         return next(new errors.BadRequestError(errorMsg))
     }
 
@@ -157,7 +153,7 @@ server.post('/patients/:id/tests', async function(req, res, next) {
     // save to db
     for (let testParams of req.body) {
         // Creating new clinicalData
-        let newClinicalDataParams = {
+        let newClinicalData = ClinicalData({
             patient_id: testParams.patient_id,
             date: testParams.date,
             time: testParams.time,
@@ -165,14 +161,7 @@ server.post('/patients/:id/tests', async function(req, res, next) {
             type: testParams.type,
             category: testParams.category,
             readings: testParams.readings
-        }
-        let newClinicalData;
-        if (testParams.category == 'Blood pressure') {
-            newClinicalData = BloodPressureData(newClinicalDataParams)
-        }
-        else {
-            newClinicalData = ClinicalData(newClinicalDataParams)
-        }
+        })
 
         // save the new test to db
         try {
@@ -180,22 +169,21 @@ server.post('/patients/:id/tests', async function(req, res, next) {
             savedClinicalDatas.push(result)
         }
         catch (error) {
-            console.log(`Respond POST request: /patients/${id}/tests`)
+            console.log(`Respond POST request: /patients/${req.params.id}/tests`)
             return next(new Error(JSON.stringify(error.errors)))
         }
     }
 
-    console.log(`Respond POST request: /patients/${id}/tests`)
+    console.log(`Respond POST request: /patients/${req.params.id}/tests`)
     res.send(201, savedClinicalDatas)
 })
 
 // Get all the treatment records of a patient
 server.get('/patients/:id/treatments', function(req, res, next) {
-    const id = req.params.id.split("=")[1] // get the id from the param string
-    console.log(`Received GET request: /patients/${id}/treatments`)
-    TreatmentRecord.find({patient_id: id})
+    console.log(`Received GET request: /patients/${req.params.id}/treatments`)
+    TreatmentRecord.find({patient_id: req.params.id})
     .exec((error, treatmentRecords) => {
-        console.log(`Respond GET request: /patients/${id}/treatments`)
+        console.log(`Respond GET request: /patients/${req.params.id}/treatments`)
         if (treatmentRecords) {
             res.send(treatmentRecords)
         }
@@ -207,13 +195,12 @@ server.get('/patients/:id/treatments', function(req, res, next) {
 
 // Add one treatment record of a patient to the system
 server.post('/patients/:id/treatments', function(req, res, next) {
-    const id = req.params.id.split("=")[1] // get the id from the param string
-    console.log(`Received POST request: /patients/${id}/treatments`)
+    console.log(`Received POST request: /patients/${req.params.id}/treatments`)
     console.log('params=>' + JSON.stringify(req.params))
     console.log('body=>' + JSON.stringify(req.body))
     let errorMsg = validateAddTreatmentRecordParams(req.body)
     if (errorMsg !== '') {
-        console.log(`Respond POST request: /patients/${id}/treatments`)
+        console.log(`Respond POST request: /patients/${req.params.id}/treatments`)
         return next(new errors.BadRequestError(errorMsg))
     }
 
@@ -227,7 +214,7 @@ server.post('/patients/:id/treatments', function(req, res, next) {
 
     // save the new treatment record to db
     newTreatmentRecord.save((error, result) => {
-        console.log(`Respond POST request: /patients/${id}/treatments`)
+        console.log(`Respond POST request: /patients/${req.params.id}/treatments`)
         if (error)
             return next(new Error(JSON.stringify(error.errors)))
         res.send(201, result)

@@ -5,5 +5,5 @@ module.exports = {
     nurse_name: String,
     type: String,
     category: String,
-    readings: Number
+    readings: Object
 }
