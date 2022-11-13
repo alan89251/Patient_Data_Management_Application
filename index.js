@@ -175,14 +175,14 @@ server.post('/patients/:id/tests', async function(req, res, next) {
         }
 
         // save the new test to db
-        await newClinicalData.save()
-        .then( (result) => {
+        try {
+            let result = await newClinicalData.save()
             savedClinicalDatas.push(result)
-        })
-        .catch( (error) => {
+        }
+        catch (error) {
             console.log(`Respond POST request: /patients/${id}/tests`)
             return next(new Error(JSON.stringify(error.errors)))
-        })
+        }
     }
 
     console.log(`Respond POST request: /patients/${id}/tests`)
