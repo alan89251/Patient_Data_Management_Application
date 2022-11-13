@@ -95,35 +95,35 @@ server.get('/patients/:id/tests', async function(req, res, next) {
 
     try {
         let clinicalDatas = []
-        let clinicalData;
+        let queryResult;
         // Find Blood pressure
-        clinicalData = await ClinicalData.find({patient_id: req.params.id, category: 'Blood pressure'})
-            .sort([['date', 'desc'], ['time'], 'desc'])
+        queryResult = await ClinicalData.find({patient_id: req.params.id, category: 'Blood pressure'})
+            .sort([['date', 'desc'], ['time', 'desc']])
             .limit(1)
             .exec()
-        if (clinicalData)
-            clinicalDatas.push(clinicalData)
+        if (queryResult.length > 0)
+            clinicalDatas.push(queryResult[0])
         // Find Respiratory rate
-        clinicalData = await ClinicalData.find({patient_id: req.params.id, category: 'Respiratory rate'})
-            .sort([['date', 'desc'], ['time'], 'desc'])
+        queryResult = await ClinicalData.find({patient_id: req.params.id, category: 'Respiratory rate'})
+            .sort([['date', 'desc'], ['time', 'desc']])
             .limit(1)
             .exec()
-        if (clinicalData)
-            clinicalDatas.push(clinicalData)
+        if (queryResult.length > 0)
+            clinicalDatas.push(queryResult[0])
         // Find Blood oxygen level
-        clinicalData = await ClinicalData.find({patient_id: req.params.id, category: 'Blood oxygen level'})
-            .sort([['date', 'desc'], ['time'], 'desc'])
+        queryResult = await ClinicalData.find({patient_id: req.params.id, category: 'Blood oxygen level'})
+            .sort([['date', 'desc'], ['time', 'desc']])
             .limit(1)
             .exec()
-        if (clinicalData)
-            clinicalDatas.push(clinicalData)
+        if (queryResult.length > 0)
+            clinicalDatas.push(queryResult[0])
         // Find Heart beat rate
-        clinicalData = await ClinicalData.find({patient_id: req.params.id, category: 'Heart beat rate'})
-            .sort([['date', 'desc'], ['time'], 'desc'])
+        queryResult = await ClinicalData.find({patient_id: req.params.id, category: 'Heart beat rate'})
+            .sort([['date', 'desc'], ['time', 'desc']])
             .limit(1)
             .exec()
-        if (clinicalData)
-            clinicalDatas.push(clinicalData)
+        if (queryResult.length > 0)
+            clinicalDatas.push(queryResult[0])
 
         console.log(`Respond GET request: /patients/${req.params.id}/tests`)
         res.send(clinicalDatas)
