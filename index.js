@@ -95,53 +95,8 @@ server.get('/patients/:id/tests', async function(req, res, next) {
 
     try {
         let clinicalDatas = []
-        let queryResult;
-        // Find Blood pressure
-        queryResult = await findLatestClinicalDataByCategoryAndPatientId('Blood pressure', req.params.id)
-        if (queryResult.length > 0) {
-            let clinicalData = queryResult[0]
-            let date = new Date(clinicalData.datetime)
-            clinicalData.date = String(date.getDate()).padStart(2, '0')
-                + '/' + String(date.getMonth() + 1).padStart(2, '0')
-                + '/' + String(date.getFullYear()).padStart(2, '0')
-            clinicalData.time = String(date.getHours()).padStart(2, '0')
-                + ':' + String(date.getMinutes()).padStart(2, '0')
-                + ':' + String(date.getSeconds()).padStart(2, '0')
-            delete clinicalData.datetime
-            clinicalDatas.push(clinicalData)
-        }
-        // Find Respiratory rate
-        queryResult = await findLatestClinicalDataByCategoryAndPatientId('Respiratory rate', req.params.id)
-        if (queryResult.length > 0) {
-            let clinicalData = queryResult[0]
-            let date = new Date(clinicalData.datetime)
-            clinicalData.date = String(date.getDate()).padStart(2, '0')
-                + '/' + String(date.getMonth() + 1).padStart(2, '0')
-                + '/' + String(date.getFullYear()).padStart(2, '0')
-            clinicalData.time = String(date.getHours()).padStart(2, '0')
-                + ':' + String(date.getMinutes()).padStart(2, '0')
-                + ':' + String(date.getSeconds()).padStart(2, '0')
-            delete clinicalData.datetime
-            clinicalDatas.push(clinicalData)
-        }
-        // Find Blood oxygen level
-        queryResult = await findLatestClinicalDataByCategoryAndPatientId('Blood oxygen level', req.params.id)
-        if (queryResult.length > 0) {
-            let clinicalData = queryResult[0]
-            let date = new Date(clinicalData.datetime)
-            clinicalData.date = String(date.getDate()).padStart(2, '0')
-                + '/' + String(date.getMonth() + 1).padStart(2, '0')
-                + '/' + String(date.getFullYear()).padStart(2, '0')
-            clinicalData.time = String(date.getHours()).padStart(2, '0')
-                + ':' + String(date.getMinutes()).padStart(2, '0')
-                + ':' + String(date.getSeconds()).padStart(2, '0')
-            delete clinicalData.datetime
-            clinicalDatas.push(clinicalData)
-        }
-        // Find Heart beat rate
-        queryResult = await findLatestClinicalDataByCategoryAndPatientId('Heart beat rate', req.params.id)
-        if (queryResult.length > 0) {
-            let clinicalData = queryResult[0]
+        let queryResults = await findLatestClinicalDataByPatientId('Blood pressure', req.params.id)
+        for (let clinicalData of queryResults) {
             let date = new Date(clinicalData.datetime)
             clinicalData.date = String(date.getDate()).padStart(2, '0')
                 + '/' + String(date.getMonth() + 1).padStart(2, '0')
@@ -391,12 +346,11 @@ function isEmptyString(str) {
 }
 
 // find latest clinical data of the specified category and patient id
-async function findLatestClinicalDataByCategoryAndPatientId(category, patientId) {
+async function findLatestClinicalDataByPatientId(category, patientId) {
     return await ClinicalData.aggregate([
         {
             $match: {
-                patient_id: patientId,
-                category: category
+                patient_id: patientId
             }
         },
         {
