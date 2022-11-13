@@ -92,19 +92,49 @@ server.post('/patients', function (req, res, next) {
 
 // Get the latest records of clinical data (Diastolic and systolic blood Pressure,
 // Respiratory rate, Blood oxygen Level, Heart beat rate) of a patient
-server.get('/patients/:id/tests', function(req, res, next) {
+server.get('/patients/:id/tests', async function(req, res, next) {
     const id = req.params.id.split("=")[1] // get the id from the param string
     console.log(`Received GET request: /patients/${id}/tests`)
-    ClinicalData.find({patient_id: id})
-    .exec((error, clinicalDatas) => {
+
+    try {
+        let clinicalDatas = []
+        let clinicalData;
+        // Find Blood pressure
+        clinicalData = await ClinicalData.find({patient_id: id, category: 'Blood pressure'})
+            .sort([['date', 'desc'], ['time'], 'desc'])
+            .limit(1)
+            .exec()
+        if (clinicalData)
+            clinicalDatas.push(clinicalData)
+        // Find Respiratory rate
+        clinicalData = await ClinicalData.find({patient_id: id, category: 'Respiratory rate'})
+            .sort([['date', 'desc'], ['time'], 'desc'])
+            .limit(1)
+            .exec()
+        if (clinicalData)
+            clinicalDatas.push(clinicalData)
+        // Find Blood oxygen level
+        clinicalData = await ClinicalData.find({patient_id: id, category: 'Blood oxygen level'})
+            .sort([['date', 'desc'], ['time'], 'desc'])
+            .limit(1)
+            .exec()
+        if (clinicalData)
+            clinicalDatas.push(clinicalData)
+        // Find Heart beat rate
+        clinicalData = await ClinicalData.find({patient_id: id, category: 'Heart beat rate'})
+            .sort([['date', 'desc'], ['time'], 'desc'])
+            .limit(1)
+            .exec()
+        if (clinicalData)
+            clinicalDatas.push(clinicalData)
+
         console.log(`Respond GET request: /patients/${id}/tests`)
-        if (clinicalDatas) {
-            res.send(clinicalDatas)
-        }
-        else {
-            res.send(404)
-        }
-    })
+        res.send(clinicalDatas)
+    }
+    catch (error) {
+        console.log(`Respond GET request: /patients/${id}/tests`)
+        return next(new Error(JSON.stringify(error.errors)))
+    }
 })
 
 //Add records of clinical data (Diastolic and systolic blood Pressure, Respiratory rate,
