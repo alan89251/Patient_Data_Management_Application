@@ -97,33 +97,61 @@ server.get('/patients/:id/tests', async function(req, res, next) {
         let clinicalDatas = []
         let queryResult;
         // Find Blood pressure
-        queryResult = await ClinicalData.find({patient_id: req.params.id, category: 'Blood pressure'})
-            .sort([['date', 'desc'], ['time', 'desc']])
-            .limit(1)
-            .exec()
-        if (queryResult.length > 0)
-            clinicalDatas.push(queryResult[0])
+        queryResult = await findLatestClinicalDataByCategoryAndPatientId('Blood pressure', req.params.id)
+        if (queryResult.length > 0) {
+            let clinicalData = queryResult[0]
+            let date = new Date(clinicalData.datetime)
+            clinicalData.date = String(date.getDate()).padStart(2, '0')
+                + '/' + String(date.getMonth() + 1).padStart(2, '0')
+                + '/' + String(date.getFullYear()).padStart(2, '0')
+            clinicalData.time = String(date.getHours()).padStart(2, '0')
+                + ':' + String(date.getMinutes()).padStart(2, '0')
+                + ':' + String(date.getSeconds()).padStart(2, '0')
+            delete clinicalData.datetime
+            clinicalDatas.push(clinicalData)
+        }
         // Find Respiratory rate
-        queryResult = await ClinicalData.find({patient_id: req.params.id, category: 'Respiratory rate'})
-            .sort([['date', 'desc'], ['time', 'desc']])
-            .limit(1)
-            .exec()
-        if (queryResult.length > 0)
-            clinicalDatas.push(queryResult[0])
+        queryResult = await findLatestClinicalDataByCategoryAndPatientId('Respiratory rate', req.params.id)
+        if (queryResult.length > 0) {
+            let clinicalData = queryResult[0]
+            let date = new Date(clinicalData.datetime)
+            clinicalData.date = String(date.getDate()).padStart(2, '0')
+                + '/' + String(date.getMonth() + 1).padStart(2, '0')
+                + '/' + String(date.getFullYear()).padStart(2, '0')
+            clinicalData.time = String(date.getHours()).padStart(2, '0')
+                + ':' + String(date.getMinutes()).padStart(2, '0')
+                + ':' + String(date.getSeconds()).padStart(2, '0')
+            delete clinicalData.datetime
+            clinicalDatas.push(clinicalData)
+        }
         // Find Blood oxygen level
-        queryResult = await ClinicalData.find({patient_id: req.params.id, category: 'Blood oxygen level'})
-            .sort([['date', 'desc'], ['time', 'desc']])
-            .limit(1)
-            .exec()
-        if (queryResult.length > 0)
-            clinicalDatas.push(queryResult[0])
+        queryResult = await findLatestClinicalDataByCategoryAndPatientId('Blood oxygen level', req.params.id)
+        if (queryResult.length > 0) {
+            let clinicalData = queryResult[0]
+            let date = new Date(clinicalData.datetime)
+            clinicalData.date = String(date.getDate()).padStart(2, '0')
+                + '/' + String(date.getMonth() + 1).padStart(2, '0')
+                + '/' + String(date.getFullYear()).padStart(2, '0')
+            clinicalData.time = String(date.getHours()).padStart(2, '0')
+                + ':' + String(date.getMinutes()).padStart(2, '0')
+                + ':' + String(date.getSeconds()).padStart(2, '0')
+            delete clinicalData.datetime
+            clinicalDatas.push(clinicalData)
+        }
         // Find Heart beat rate
-        queryResult = await ClinicalData.find({patient_id: req.params.id, category: 'Heart beat rate'})
-            .sort([['date', 'desc'], ['time', 'desc']])
-            .limit(1)
-            .exec()
-        if (queryResult.length > 0)
-            clinicalDatas.push(queryResult[0])
+        queryResult = await findLatestClinicalDataByCategoryAndPatientId('Heart beat rate', req.params.id)
+        if (queryResult.length > 0) {
+            let clinicalData = queryResult[0]
+            let date = new Date(clinicalData.datetime)
+            clinicalData.date = String(date.getDate()).padStart(2, '0')
+                + '/' + String(date.getMonth() + 1).padStart(2, '0')
+                + '/' + String(date.getFullYear()).padStart(2, '0')
+            clinicalData.time = String(date.getHours()).padStart(2, '0')
+                + ':' + String(date.getMinutes()).padStart(2, '0')
+                + ':' + String(date.getSeconds()).padStart(2, '0')
+            delete clinicalData.datetime
+            clinicalDatas.push(clinicalData)
+        }
 
         console.log(`Respond GET request: /patients/${req.params.id}/tests`)
         res.send(clinicalDatas)
@@ -152,11 +180,14 @@ server.post('/patients/:id/tests', async function(req, res, next) {
     let savedClinicalDatas = []
     // save to db
     for (let testParams of req.body) {
+        // parse timestamp
+        let dateParts = testParams.date.split('/')
+        let timeParts = testParams.time.split(':')
+        let timestamp = new Date(dateParts[2], dateParts[1], dateParts[0], timeParts[0], timeParts[1], timeParts[2]).getTime()
         // Creating new clinicalData
         let newClinicalData = ClinicalData({
             patient_id: testParams.patient_id,
-            date: testParams.date,
-            time: testParams.time,
+            datetime: timestamp,
             nurse_name: testParams.nurse_name,
             type: testParams.type,
             category: testParams.category,
@@ -357,6 +388,71 @@ function validateAddTreatmentRecordParams(params) {
 // check if the string is undefined, null or empty
 function isEmptyString(str) {
     return str === undefined || str === null || str === ""
+}
+
+// find latest clinical data of the specified category and patient id
+async function findLatestClinicalDataByCategoryAndPatientId(category, patientId) {
+    return await ClinicalData.aggregate([
+        {
+            $match: {
+                patient_id: patientId,
+                category: category
+            }
+        },
+        {
+            $group: {
+                _id: {
+                    patient_id: '$patientId',
+                    category: '$category'
+                },
+                latestDatetime: { 
+                    $max: '$datetime'
+                },
+                details: {
+                    $push: '$$ROOT'
+                }
+            }
+        },
+        {
+            "$project": {
+                _id: 0,
+                proj_details: {
+                    "$setDifference": [
+                        {
+                            "$map": {
+                                "input": "$details",
+                                "as": "mapped",
+                                "in": {
+                                    "$cond": [
+                                        {
+                                            "$eq": ["$latestDatetime", "$$mapped.datetime"]
+                                        },
+                                        "$$mapped",
+                                        false
+                                    ]
+                                }
+                            }
+                        },
+                        [false]
+                    ]
+                }
+            }
+        },
+        {
+            $unwind: '$proj_details'
+        },
+        {
+            $project: {
+                '_id': '$proj_details._id',
+                'patient_id': '$proj_details.patient_id',
+                'datetime': '$proj_details.datetime',
+                'nurse_name': '$proj_details.nurse_name',
+                'type': '$proj_details.type',
+                'category': '$proj_details.category',
+                'readings': '$proj_details.readings',
+            }
+        }
+    ])
 }
 
 // connect to mongoDB and return the connection instance

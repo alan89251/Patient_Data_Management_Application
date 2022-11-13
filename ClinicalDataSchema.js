@@ -1,7 +1,6 @@
 module.exports = {
     patient_id: String,
-    date: String,
-    time: String,
+    datetime: Number,
     nurse_name: String,
     type: String,
     category: String,
