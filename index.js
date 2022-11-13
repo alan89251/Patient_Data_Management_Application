@@ -95,7 +95,7 @@ server.get('/patients/:id/tests', async function(req, res, next) {
 
     try {
         let clinicalDatas = []
-        let queryResults = await findLatestClinicalDataByPatientId('Blood pressure', req.params.id)
+        let queryResults = await findLatestClinicalDataByPatientId(req.params.id)
         for (let clinicalData of queryResults) {
             let date = new Date(clinicalData.datetime)
             clinicalData.date = String(date.getDate()).padStart(2, '0')
@@ -205,6 +205,79 @@ server.post('/patients/:id/treatments', function(req, res, next) {
             return next(new Error(JSON.stringify(error.errors)))
         res.send(201, result)
     })
+})
+
+// List all patients in critical condition
+server.get('/critical-patients', async function(req, res, next) {
+    console.log('Received GET request: /critical-patients')
+
+    // List all patients
+    let patients = await Patient.find({})
+        .exec()
+    let response = []
+    for (let patient of patients) {
+        let clinicalDatas = await findLatestClinicalDataByPatientId(String(patient._id))
+        let isInCriticalCondition = false
+        let patientDetail = {}
+        patientDetail.reason = ''
+        for (let clinicalData of clinicalDatas) {
+            switch (clinicalData.category) {
+                case "Blood pressure":
+                    patientDetail.systolic_blood_pressure = clinicalData.readings.systolic
+                    patientDetail.diastolic_blood_pressure = clinicalData.readings.diastolic
+                    if (clinicalData.readings.systolic > 180) {
+                        isInCriticalCondition = true
+                        patientDetail.reason = patientDetail.reason + 'systolic blood pressure > 180 mmHg;'
+                    }
+                    if (clinicalData.readings.diastolic > 120) {
+                        isInCriticalCondition = true
+                        patientDetail.reason = patientDetail.reason + 'diastolic blood pressure > 120 mmHg;'
+                    }
+                    break
+
+                case "Respiratory rate":
+                    patientDetail.respiratory_rate = clinicalData.readings
+                    if (clinicalData.readings < 12) {
+                        isInCriticalCondition = true
+                        patientDetail.reason = patientDetail.reason + 'respiratory rate < 12 per min;'
+                    }
+                    else if (clinicalData.readings > 25) {
+                        isInCriticalCondition = true
+                        patientDetail.reason = patientDetail.reason + 'respiratory rate > 25 per min;'
+                    }
+                    break
+
+                case "Heart beat rate":
+                    patientDetail.heart_beat_rate = clinicalData.readings
+                    if (clinicalData.readings > 200) {
+                        isInCriticalCondition = true
+                        patientDetail.reason = patientDetail.reason + 'eart beat rate > 200 per min;'
+                    }
+                    break
+
+                case "Blood oxygen level":
+                    patientDetail.blood_oxygen_level = clinicalData.readings
+                    if (clinicalData.readings <= 88) {
+                        isInCriticalCondition = true
+                        patientDetail.reason = patientDetail.reason + 'blood oxygen level <= 88%;'
+                    }
+                    break
+                default:
+                    break
+            }
+        }
+
+        if (isInCriticalCondition) {
+            patientDetail.reason = patientDetail.reason.slice(0, -1) // remove the tailing ';'
+            patientDetail.patient_id = patient._id
+            patientDetail.first_name = patient.first_name
+            patientDetail.last_name = patient.last_name
+            response.push(patientDetail)
+        }
+    }
+
+    console.log('Respond GET request: /critical-patients')
+    res.send(response)
 })
 
 // login
@@ -345,8 +418,8 @@ function isEmptyString(str) {
     return str === undefined || str === null || str === ""
 }
 
-// find latest clinical data of the specified category and patient id
-async function findLatestClinicalDataByPatientId(category, patientId) {
+// find latest clinical data of the specified patient id
+async function findLatestClinicalDataByPatientId(patientId) {
     return await ClinicalData.aggregate([
         {
             $match: {
