@@ -38,7 +38,7 @@ server.get('/patients', function(req, res, next) {
 // Get a single patient by their patient id
 server.get('/patients/:id', function(req, res, next) {
     console.log(`Received GET request: /patients/${req.params.id}`)
-    Patient.find({ _id: req.params.id })
+    Patient.findOne({ _id: req.params.id })
     .exec((error, patient) => {
         console.log(`Respond GET request: /patients/${req.params.id}`)
         if (patient) {
@@ -280,10 +280,22 @@ server.get('/critical-patients', async function(req, res, next) {
     res.send(response)
 })
 
+//
+server.get('/debug', async function(req, res, next) {
+    let user = User({
+        user_name: "Peter",
+        password: "5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5",
+        user_type: "admin"
+    })
+    let result = await user.save()
+    res.send(result)
+})
+//
+
 // login
 server.post('/login', function(req, res, next) {
     console.log('Received GET request: /login')
-    User.find({user_name: req.body.user_name})
+    User.findOne({user_name: req.body.user_name})
     .exec((error, result) => {
         console.log('Respond GET request: /login')
         if (error) {
