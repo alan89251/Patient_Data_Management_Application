@@ -281,7 +281,7 @@ server.get('/critical-patients', async function(req, res, next) {
 })
 
 // login
-server.get('/login', function(req, res, next) {
+server.post('/login', function(req, res, next) {
     console.log('Received GET request: /login')
     User.find({user_name: req.body.user_name})
     .exec((error, result) => {
