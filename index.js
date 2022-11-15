@@ -303,6 +303,18 @@ server.post('/login', function(req, res, next) {
     })
 })
 
+//
+server.post('/user', async function(req, res, next) {
+    let user = User({
+        user_name: req.body.user_name,
+        password: req.body.password,
+        user_type: req.body.user_type
+    })
+    let result = await user.save()
+    res.send(result)
+})
+//
+
 // validate the parameters of the api '/patients' POST
 // return error message if any error, otherwise return empty string
 function validateAddPatientParams(params) {
