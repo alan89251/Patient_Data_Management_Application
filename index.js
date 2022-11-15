@@ -1,6 +1,6 @@
 const SERVER_NAME = 'Patient-Data-Management-Application'
 const PORT = process.env.PORT
-const HOST = '127.0.0.1'
+const HOST = '0.0.0.0'
 const dbConnectionStr = process.env.MONGODB_URI
 
 let restify = require('restify')
