@@ -1,5 +1,5 @@
 const SERVER_NAME = 'Patient-Data-Management-Application'
-const PORT = 5000
+const PORT = process.env.PORT
 const HOST = '127.0.0.1'
 const dbConnectionStr = process.env.MONGODB_URI
 
