@@ -141,7 +141,7 @@ server.post('/patients/:id/tests', async function(req, res, next) {
         let timestamp = new Date(dateParts[2], dateParts[1], dateParts[0], timeParts[0], timeParts[1], timeParts[2]).getTime()
         // Creating new clinicalData
         let newClinicalData = ClinicalData({
-            patient_id: testParams.patient_id,
+            patient_id: req.params.id,
             datetime: timestamp,
             nurse_name: testParams.nurse_name,
             type: testParams.type,
@@ -192,7 +192,7 @@ server.post('/patients/:id/treatments', function(req, res, next) {
 
     // Creating new TreatmentRecord
     let newTreatmentRecord = TreatmentRecord({
-        patient_id: req.body.patient_id,
+        patient_id: req.params.id,
         treatment: req.body.treatment,
         date: req.body.date,
         description: req.body.description
