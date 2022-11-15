@@ -1,7 +1,7 @@
 const SERVER_NAME = 'Patient-Data-Management-Application'
-const PORT = 5000
+const PORT = 80
 const HOST = '127.0.0.1'
-const dbConnectionStr = 'mongodb://127.0.0.1:27017/patient_data'
+const dbConnectionStr = process.env.MONGODB_URI
 
 let restify = require('restify')
 var errors = require('restify-errors');
